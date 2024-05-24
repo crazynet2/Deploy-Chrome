@@ -1,39 +1,39 @@
-﻿# URL per il download dell'ultima versione di Google Chrome
+﻿# URL to download the latest version of Google Chrome
 $chromeUrl = "https://dl.google.com/chrome/install/GoogleChromeStandaloneEnterprise64.msi"
 
-# Percorso locale dove verrà salvato l'installer di Google Chrome
+# Local path where the Google Chrome installer will be saved
 $chromeInstallerPath = "e:\Temp\GoogleChromeStandaloneEnterprise64.msi"
 
-# Scarica l'ultima versione di Google Chrome
+# Download the latest version of Google Chrome
 Invoke-WebRequest -Uri $chromeUrl -OutFile $chromeInstallerPath
 
-# Ottieni l'elenco dei computer nel dominio, escludendo il computer locale
+# Get the list of computers in the domain, excluding the local computer
 $computers = Get-ADComputer -Filter * | Where-Object { $_.Name -ne $env:COMPUTERNAME } | Select-Object -ExpandProperty Name
 
-# Loop attraverso ogni computer nel dominio
+# Loop through every computer in the domain
 foreach ($computer in $computers) {
-    # Verifica se il computer è raggiungibile
+    # Check if the computer is reachable
     if (Test-Connection -ComputerName $computer -Count 1 -Quiet) {
         try {
-            # Copia il file di installazione di Chrome sul computer remoto
+            # Copy the Chrome installation file to the remote computer
             Copy-Item -Path $chromeInstallerPath -Destination "\\$computer\c$\" -Force
             
-            # Esegui l'installazione di Chrome utilizzando WinRM
+            # Run Chrome Setup using WinRM
             Invoke-Command -ComputerName $computer -ScriptBlock {
                 Start-Process -FilePath "msiexec.exe" -ArgumentList "/i C:\GoogleChromeStandaloneEnterprise64.msi /qn /norestart" -Wait
             }
             
             Write-Host "Aggiornamento di Google Chrome su $computer eseguito."
 
-            # Invia un popup su Chrome per avvisare dell'aggiornamento utilizzando msg.exe
+            # Send a popup to Chrome to notify you of the update using msg.exe
             Invoke-Command -ComputerName $computer -ScriptBlock {
-                $msg = "Chrome si riavvierà automaticamente in 15 minuti per completare l'aggiornamento."
+                $msg = "Chrome will automatically restart in 15 minutes to complete the update."
                 msg * /SERVER:$env:COMPUTERNAME "$msg"
             }
         } catch {
-            Write-Host "Errore durante l'aggiornamento di Google Chrome su ${computer}: Si è verificato un errore durante l'aggiornamento."
+            Write-Host "Error updating Google Chrome su ${computer}: An error occurred during the update."
         }
     } else {
-        Write-Host "Il computer $computer non è raggiungibile."
+        Write-Host "The computer $computer is not reachable."
     }
 }
